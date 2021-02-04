@@ -101,7 +101,7 @@ for epoch in range(nb_epochs):
         accuracies.append(y.eq(l.detach().argmax(dim=1)).float().mean())
         break
 
-    print('Validation:')
+    print('\nValidation:')
     print(f'Loss: {torch.tensor(losses).mean():.2f}', end='\n')
     print(f'Accuracy: {torch.tensor(accuracies).mean():.2f}')
 
