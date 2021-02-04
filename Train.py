@@ -71,7 +71,6 @@ for epoch in range(nb_epochs):
         #6-record losses
         losses.append(J.item())
         accuracies.append(y.eq(l.detach().argmax(dim=1)).float().mean())
-        break
 
     print('Training:')
     print(f'Loss: {torch.tensor(losses).mean():.2f}', end='\n')
@@ -99,7 +98,6 @@ for epoch in range(nb_epochs):
 
         losses.append(J.item())
         accuracies.append(y.eq(l.detach().argmax(dim=1)).float().mean())
-        break
 
     print('\nValidation:')
     print(f'Loss: {torch.tensor(losses).mean():.2f}', end='\n')
