@@ -33,7 +33,7 @@ loss = nn.CrossEntropyLoss()
 #Training
 print("Training")
 
-nb_epochs = 3
+nb_epochs = 50
 p = [0.0,0.0]
 
 for epoch in range(nb_epochs):
