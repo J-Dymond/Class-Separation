@@ -6,7 +6,7 @@ from torchvision import datasets,transforms
 from torch.utils.data import random_split, DataLoader
 import torch.nn.functional as F
 import numpy as np
-from Models import *
+from Model import *
 
 #loading data
 train_data = datasets.CIFAR10('data', train=True, download=True, transform = transforms.ToTensor())
@@ -15,8 +15,6 @@ train_loader = DataLoader(train,batch_size=32)
 val_loader =   DataLoader(val, batch_size=32)
 
 #defining model
-# model = BranchedNetwork()
-# model = ShortBranchedNetwork()
 model = ResNet(Bottleneck, [3,4,6,3]) #ResNet50
 # model = ResNet(BasicBlock, [2,2,2,2]) #ResNet18
 
@@ -24,11 +22,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model = model.to(device)
 
 #loading weights
-# model_name = 'branched_net_backbone'
-# model_name = 'short_branched_net_backbone'
-# model_name = 'branched_net'
-# model_name = 'short_branched_net'
-# model_name = 'convolutional_net'
+directory = "saved-models/"
 # model_name = 'ResNet18-CIFAR-10'
 model_name = 'ResNet50-CIFAR-10'
 model.load_state_dict(torch.load(directory + model_name + '.pth'))
@@ -121,7 +115,6 @@ for epoch in range(n_epochs):
           batch_R_vals = []
 
           if (batch_count%100 == 0):
-            break
             print("Batch Number: " + str(batch_count))
 
           N=[]
@@ -144,6 +137,6 @@ R_vals = np.array(R_vals)
 av_R_vals = np.average(R_vals,axis=0)
 print(av_R_vals)
 
-directory = "separation values/"
+directory = "separation-values/"
 save_string = directory+'ResNet'+str(n_layers)+'.npy'
 np.save(save_string, av_R_vals)
