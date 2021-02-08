@@ -15,8 +15,12 @@ train_loader = DataLoader(train,batch_size=32)
 val_loader =   DataLoader(val, batch_size=32)
 
 #defining model
-model = ResNet(Bottleneck, [3,4,6,3]) #ResNet50
 # model = ResNet(BasicBlock, [2,2,2,2]) #ResNet18
+# model = ResNet(BasicBlock, [2,4,6,3]) #ResNet34
+# model = ResNet(Bottleneck, [3,4,6,3]) #ResNet50
+model = BranchedResNet(BasicBlock, [2,2,2,2]) #ResNet18
+# model = BranchedResNet(BasicBlock, [2,4,6,3]) #ResNet34
+# model = BranchedResNet(Bottleneck, [3,4,6,3]) #ResNet50
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model = model.to(device)
@@ -24,7 +28,12 @@ model = model.to(device)
 #loading weights
 directory = "saved-models/"
 # model_name = 'ResNet18-CIFAR-10'
-model_name = 'ResNet50-CIFAR-10'
+# model_name = 'ResNet34-CIFAR-10'
+# model_name = 'ResNet50-CIFAR-10'
+model_name = 'BranchedResNet18-CIFAR-10'
+# model_name = 'BranchedResNet34-CIFAR-10'
+# model_name = 'BranchedResNet50-CIFAR-10'
+
 model.load_state_dict(torch.load(directory + model_name + '.pth'))
 
 #defining embedding function
@@ -137,6 +146,6 @@ R_vals = np.array(R_vals)
 av_R_vals = np.average(R_vals,axis=0)
 print(av_R_vals)
 
-directory = "separation-values/"
-save_string = directory+'ResNet'+str(n_layers)+'.npy'
+save_directory = "separation-values/"
+save_string = save_directory+model_name+'.npy'
 np.save(save_string, av_R_vals)

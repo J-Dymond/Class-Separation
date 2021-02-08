@@ -16,14 +16,20 @@ train_loader = DataLoader(train,batch_size=32)
 val_loader =   DataLoader(val, batch_size=32)
 
 #Loading Model
-model = BranchedResNet(BasicBlock, [2,2,2,2]) # Resnet18
-# model = BranchedResNet(BasicBlock, [3,4,6,3]) # Resnet34
-# model = BranchedResNet(Bottleneck, [3,4,6,3]) # Resnet50
-# model = BranchedResNet(Bottleneck, [3,4,23,3]) # Resnet101
-# model = BranchedResNet(Bottleneck, [3,4,36,3]) # Resnet152
+model = BranchedResNet(BasicBlock, [2,2,2,2]) #ResNet18
+# model = BranchedResNet(BasicBlock, [2,4,6,3]) #ResNet34
+# model = BranchedResNet(Bottleneck, [3,4,6,3]) #ResNet50
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model = model.to(device)
+
+#Number of convolutional layers to be tracked
+n_conv_layers = 0
+for name, param in model.named_parameters():
+  if 'conv' in name:
+    n_conv_layers = n_conv_layers + 1
+
+print("Number of convolutional layers: " + str(n_conv_layers))
 
 #Defining optimiser
 params = model.parameters()
@@ -31,9 +37,9 @@ optimiser = optim.SGD(params,lr=5e-2)
 loss = nn.CrossEntropyLoss()
 
 #Training
-print("Training")
 
 nb_epochs = 50
+epoch_gradients = list()
 for epoch in range(nb_epochs):
     #track loss and accuracy
     losses = list()
@@ -48,6 +54,8 @@ for epoch in range(nb_epochs):
       branch_accuracies.append(list())
 
     model.train() # because of dropout
+    batch_gradients = torch.zeros(n_conv_layers)
+
     for batch in train_loader:
         x,y = batch
         x,y = x.to(device),y.to(device)
@@ -74,6 +82,11 @@ for epoch in range(nb_epochs):
 
         #4-accumulate partial derivatives of J
         J.backward()
+        layer = 0
+        for name, param in model.named_parameters():
+          if "conv" in name:
+            batch_gradients[layer] = batch_gradients[layer] + torch.sum(torch.abs(param.grad))
+            layer = layer + 1
 
         #5-step in opposite direction of gradient
         optimiser.step()
@@ -90,6 +103,9 @@ for epoch in range(nb_epochs):
         branch_accuracies[0].append(y.eq(E1.detach().argmax(dim=1)).float().mean())
         branch_accuracies[1].append(y.eq(E2.detach().argmax(dim=1)).float().mean())
         branch_accuracies[2].append(y.eq(E3.detach().argmax(dim=1)).float().mean())
+
+    epoch_gradient = batch_gradients/len(train_loader)
+    epoch_gradients.append(np.array(epoch_gradient.detach().cpu().numpy()))
 
     print(f'\nEpoch {epoch+1}', end = '\n')
     print('Training:')
@@ -163,22 +179,25 @@ for epoch in range(nb_epochs):
     print(f'Exit 2: {torch.tensor(branch_accuracies[1]).mean():.2f}', end=', ')
     print(f'Final Exit: {torch.tensor(branch_accuracies[2]).mean():.2f}', end='\n')
 
-
 #Saving model
-layer_wise_embeddings = []
 n_epochs = 1
 
 input,target = next(iter(train_loader))
 input,target = input.to(device),target.to(device)
 output = model(input)
 output_shape = len(output[0])
-
 n_layers = output_shape
-n_targets = output[-1][0][0].shape[0] #Gets the output of the model, since it is returned as a list to account for branched networks
+n_targets = output[-1][0][0].shape[0]
 
+#Saving gradient values
+numpy_epoch_gradients = np.array(epoch_gradients)
+numpy_directory = "gradient-values/"
+save_string = numpy_directory+'BranchedResNet'+str(n_layers)+'.npy'
+np.save(save_string, numpy_epoch_gradients)
 
+#Saving model
 print("Number of layers: " + str(n_layers))
 print("Number of targets: " + str(n_targets))
 
 directory = "saved-models/"
-torch.save(model.state_dict(), directory + 'ResNet'+str(n_layers)+'-CIFAR-10.pth')
+torch.save(model.state_dict(), directory + 'BranchedResNet'+str(n_layers)+'-CIFAR-10.pth')

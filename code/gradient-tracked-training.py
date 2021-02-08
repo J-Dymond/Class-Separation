@@ -19,11 +19,17 @@ val_loader =   DataLoader(val, batch_size=32)
 model = ResNet(BasicBlock, [2,2,2,2]) # Resnet18
 # model = ResNet(BasicBlock, [3,4,6,3]) # Resnet34
 # model = ResNet(Bottleneck, [3,4,6,3]) # Resnet50
-# model = ResNet(Bottleneck, [3,4,23,3]) # Resnet101
-# model = ResNet(Bottleneck, [3,4,36,3]) # Resnet152
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model = model.to(device)
+
+#Number of convolutional layers to be tracked
+n_conv_layers = 0
+for name, param in model.named_parameters():
+  if 'conv' in name:
+    n_conv_layers = n_conv_layers + 1
+
+print("Number of convolutional layers: " + str(n_conv_layers))
 
 #Defining optimiser
 params = model.parameters()
@@ -31,55 +37,54 @@ optimiser = optim.SGD(params,lr=5e-2)
 loss = nn.CrossEntropyLoss()
 
 #Training
-print("Training")
+print("Training:")
 
 nb_epochs = 50
-p = [0.0,0.0]
-
+epoch_gradients = list()
 for epoch in range(nb_epochs):
-    print(f'\nEpoch {epoch+1}', end = '\n')
     #track loss and accuracy
     losses = list()
     accuracies = list()
-
-    if epoch == 15:
-      print("Changing Dropout")
-      p = [0.1,0.2]
-
     model.train() # because of dropout
+    batch_gradients = torch.zeros(n_conv_layers)
     for batch in train_loader:
         x,y = batch
         x,y = x.to(device),y.to(device)
         #x: b x 1 x 28 x 28
         b = x.size(0)
         # x = x.view(b,-1)
-        #1-forward pass - get logits from all exit branches
-        l = model(x,p)[-1][0]
-
+        #1-forward pass - get logits
+        l = model(x)[-1][0]
         #2-objective function
         J = loss(l,y)
-
         #3-clean gradients
         model.zero_grad()
-
         #4-accumulate partial derivatives of J
         J.backward()
+
+        layer = 0
+        for name, param in model.named_parameters():
+          if "conv" in name:
+            batch_gradients[layer] = batch_gradients[layer] + torch.sum(torch.abs(param.grad))
+            layer = layer + 1
+
 
         #5-step in opposite direction of gradient
         optimiser.step()
 
-        #6-record losses
         losses.append(J.item())
         accuracies.append(y.eq(l.detach().argmax(dim=1)).float().mean())
 
-    print('Training:')
-    print(f'Loss: {torch.tensor(losses).mean():.2f}', end='\n')
-    print(f'Accuracy: {torch.tensor(accuracies).mean():.2f}')
+    epoch_gradient = batch_gradients/len(train_loader)
+    epoch_gradients.append(np.array(epoch_gradient.detach().cpu().numpy()))
 
-    #Reset losses and accuracies for validation
+
+    print(f'Epoch {epoch+1}', end = ', ')
+    print(f'Training Loss: {torch.tensor(losses).mean():.2f}', end=', ')
+    print(f'Training Accuracy: {torch.tensor(accuracies).mean():.2f}')
+
     losses = list()
     accuracies = list()
-
     model.eval()
 
     for batch in val_loader:
@@ -89,19 +94,18 @@ for epoch in range(nb_epochs):
         #x: b x 1 x 28 x 28
         b = x.size(0)
         # x = x.view(b,-1)
-        #1-forward pass - get logits
+        #1-forward pass - get logites
         with torch.no_grad():
-            l = model(x,p)[-1][0]
-
+            l = model(x)[-1][0]
         #2-objective function
         J = loss(l,y)
 
         losses.append(J.item())
         accuracies.append(y.eq(l.detach().argmax(dim=1)).float().mean())
 
-    print('\nValidation:')
-    print(f'Loss: {torch.tensor(losses).mean():.2f}', end='\n')
-    print(f'Accuracy: {torch.tensor(accuracies).mean():.2f}')
+    print(f'Epoch {epoch+1}', end = ', ')
+    print(f'Validation Loss: {torch.tensor(losses).mean():.2f}', end=', ')
+    print(f'Validation Accuracy: {torch.tensor(accuracies).mean():.2f}')
 
 #Saving model
 layer_wise_embeddings = []
@@ -111,11 +115,16 @@ input,target = next(iter(train_loader))
 input,target = input.to(device),target.to(device)
 output = model(input)
 output_shape = len(output[0])
-
 n_layers = output_shape
-n_targets = output[-1][0][0].shape[0] #Gets the output of the model, since it is returned as a list to account for branched networks
+n_targets = output[-1][0][0].shape[0]
 
+#Saving gradient values
+numpy_epoch_gradients = np.array(epoch_gradients)
+numpy_directory = "gradient-values/"
+save_string = numpy_directory+'ResNet'+str(n_layers)+'.npy'
+np.save(save_string, numpy_epoch_gradients)
 
+#Saving model
 print("Number of layers: " + str(n_layers))
 print("Number of targets: " + str(n_targets))
 

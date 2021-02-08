@@ -321,7 +321,7 @@ class PNASNet(nn.Module):
         out = self.linear(out.view(out.size(0), -1))
         output = [embeddings]
 
-        output.append(out)
+        output.append([out])
 
         return output
 
@@ -455,6 +455,6 @@ class GoogLeNet(nn.Module):
         out = out.view(out.size(0), -1)
         out = self.linear(out)
 
-        output.append(out)
+        output.append([out])
 
         return output
