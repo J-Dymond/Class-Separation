@@ -14,6 +14,7 @@ from Model import *
 
 #Arguments for running
 parser = argparse.ArgumentParser()
+parser.add_argument("target_directory",help="Name of directory to save data", type=str)
 parser.add_argument("-m","--model", help="Backbone architecture to be used",type=str,default='ResNet18')
 parser.add_argument("-w","--branch_weightings", nargs="+",
     help="How to weight the branch losses. Format: a b c d -> a+b+c+d should equal 1.0. Default:[0.2,0.0,0.3,0.5]. Use 0.0 to deactivate branch.",
@@ -25,6 +26,7 @@ parser.add_argument("-lr","--learning_rate", help="Learning rate for training",t
 args = parser.parse_args()
 
 print('arguments passed:')
+print("target_directory: " + args.target_directory)
 print("Architecture: " + args.model)
 print("Branch Weightings: " + str(args.branch_weightings))
 print("Epochs: " + str(args.epochs))
@@ -39,15 +41,24 @@ try:
 except FileExistsError:
     print("Directory " , "trained-models/Branched"+args.model ,  " already exists")
 
-for run in range(100):
-    try:
-        save_directory = "trained-models/Branched"+args.model+"/run"+str(run)+"/"
-        os.mkdir(save_directory)
-        print("Saving data to: " , save_directory)
-        break
 
-    except FileExistsError:
-        continue
+try:
+    save_directory = "trained-models/Branched"+args.model+"/"+args.target_directory+"/"
+    os.mkdir(save_directory)
+    print("Saving data to: " , save_directory)
+
+except FileExistsError:
+    print(save_directory, "Already exists...")
+    for run in range(100):
+        try:
+            save_directory = "trained-models/"+args.model+"/run"+str(run)+"/"
+            os.mkdir(save_directory)
+            print("Instead saving data to: " , save_directory)
+            break
+
+        except FileExistsError:
+            continue
+
 
 metric_directory = save_directory+"/metrics/"
 os.mkdir(metric_directory)
@@ -187,8 +198,9 @@ for run in range(args.runs):
             layer = 0
             for name, param in model.named_parameters():
               if "conv" in name:
-                batch_gradients_L1[layer] = batch_gradients_L1[layer] + torch.sum(torch.abs(param.grad))/torch.flatten(param).shape[0]
-                batch_gradients_L2[layer] = batch_gradients_L2[layer] + torch.sum(torch.abs(param.grad))/torch.flatten(param).shape[0]
+                flattened_gradients = torch.flatten(param.grad)
+                batch_gradients_L1[layer] = batch_gradients_L1[layer] + torch.linalg.norm(flattened_gradients,ord=1)/flattened_gradients.shape[0]
+                batch_gradients_L2[layer] = batch_gradients_L1[layer] + torch.linalg.norm(flattened_gradients,ord=2)/flattened_gradients.shape[0]
                 layer = layer + 1
 
             #5-step in opposite direction of gradient

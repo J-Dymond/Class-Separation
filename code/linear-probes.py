@@ -13,7 +13,7 @@ from Model import *
 
 #Arguments for running
 parser = argparse.ArgumentParser()
-parser.add_argument("target_directory",help="Directory to run class separation code in. Format: '../trained-models/*model*/Runx/'", type=str)
+parser.add_argument("target_directory",help="Directory to run class separation code in. Format: 'trained-models/*model*/Runx/'", type=str)
 parser.add_argument("-m","--model", help="Backbone architecture to be used",type=str,default='ResNet18')
 parser.add_argument("-r","--runs", help="Number of runs of the experiment to do. Must be less than or equal to number of trained models.",type=int,default=5)
 parser.add_argument("-b","--batch_size", help="Batch size for training.",type=int,default=128)

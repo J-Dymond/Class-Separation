@@ -13,6 +13,7 @@ from Model import *
 #arguments for running
 
 parser = argparse.ArgumentParser()
+parser.add_argument("target_directory",help="Name of directory to save data", type=str)
 parser.add_argument("-m","--model", help="Architecture to be used",type=str,default='ResNet18')
 parser.add_argument("-r","--runs", help="Number of runs of the experiment to do",type=int,default=5)
 parser.add_argument("-e","--epochs", help="Number of epochs to run experiment for",type=int,default=200)
@@ -21,6 +22,7 @@ parser.add_argument("-lr","--learning_rate", help="Learning rate for training",t
 args = parser.parse_args()
 
 print('arguments passed:')
+print("target_directory: " + args.target_directory)
 print("Architecture: " + args.model)
 print("Epochs: " + str(args.epochs))
 print("Runs: " + str(args.runs))
@@ -34,15 +36,22 @@ try:
 except FileExistsError:
     print("Directory: " , "trained-models/"+args.model ,  " already exists")
 
-for run in range(100):
-    try:
-        save_directory = "trained-models/"+args.model+"/run"+str(run)+"/"
-        os.mkdir(save_directory)
-        print("Saving data to: " , save_directory)
-        break
+try:
+    save_directory = "trained-models/"+args.model+"/"+args.target_directory+"/"
+    os.mkdir(save_directory)
+    print("Saving data to: " , save_directory)
 
-    except FileExistsError:
-        continue
+except FileExistsError:
+    print(save_directory, "Already exists...")
+    for run in range(100):
+        try:
+            save_directory = "trained-models/"+args.model+"/run"+str(run)+"/"
+            os.mkdir(save_directory)
+            print("Instead saving data to: " , save_directory)
+            break
+
+        except FileExistsError:
+            continue
 
 metric_directory = save_directory+"/metrics/"
 os.mkdir(metric_directory)
@@ -158,8 +167,9 @@ for run in range(args.runs):
             layer = 0
             for name, param in model.named_parameters():
               if "conv" in name:
-                batch_gradients_L1[layer] = batch_gradients_L1[layer] + torch.sum(torch.abs(param.grad))/torch.flatten(param).shape[0]
-                batch_gradients_L2[layer] = batch_gradients_L2[layer] + torch.sum(torch.abs(param.grad))/torch.flatten(param).shape[0]
+                flattened_gradients = torch.flatten(param.grad)
+                batch_gradients_L1[layer] = batch_gradients_L1[layer] + torch.linalg.norm(flattened_gradients,ord=1)/flattened_gradients.shape[0]
+                batch_gradients_L2[layer] = batch_gradients_L1[layer] + torch.linalg.norm(flattened_gradients,ord=2)/flattened_gradients.shape[0]
                 layer = layer + 1
 
 
@@ -168,6 +178,7 @@ for run in range(args.runs):
 
             losses.append(J.item())
             accuracies.append(y.eq(l.detach().argmax(dim=1)).float().mean())
+            break
 
         train_accuracy[epoch] = torch.tensor(accuracies).mean()
         train_loss[epoch] = torch.tensor(losses).mean()
@@ -202,6 +213,7 @@ for run in range(args.runs):
 
             losses.append(J.item())
             accuracies.append(y.eq(l.detach().argmax(dim=1)).float().mean())
+            break
 
         val_loss[epoch] = torch.tensor(losses).mean()
         val_accuracy[epoch] = torch.tensor(accuracies).mean()
