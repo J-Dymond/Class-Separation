@@ -6,6 +6,7 @@ import argparse
 import torch
 from torch import nn
 from torch import optim
+from torch import linalg
 from torchvision import datasets,transforms
 from torch.utils.data import random_split, DataLoader
 import torch.nn.functional as F
@@ -220,7 +221,6 @@ for run in range(args.runs):
             branch_accuracies[1].append(y.eq(E2.detach().argmax(dim=1)).float().mean())
             branch_accuracies[2].append(y.eq(E3.detach().argmax(dim=1)).float().mean())
             branch_accuracies[3].append(y.eq(E4.detach().argmax(dim=1)).float().mean())
-            break
 
         epoch_gradient_L1 = batch_gradients_L1/len(train_loader)
         epoch_gradients_L1.append(np.array(epoch_gradient_L1.detach().cpu().numpy()))
@@ -291,7 +291,6 @@ for run in range(args.runs):
             branch_accuracies[1].append(y.eq(E2.detach().argmax(dim=1)).float().mean())
             branch_accuracies[2].append(y.eq(E3.detach().argmax(dim=1)).float().mean())
             branch_accuracies[3].append(y.eq(E4.detach().argmax(dim=1)).float().mean())
-            break
 
         val_losses[run,epoch] = torch.tensor(losses).mean()
 

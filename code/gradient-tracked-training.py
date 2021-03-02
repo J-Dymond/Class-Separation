@@ -2,6 +2,7 @@
 import os
 import torch
 from torch import nn
+from torch import linalg
 from torch import optim
 from torchvision import datasets,transforms
 from torch.utils.data import random_split, DataLoader
@@ -168,8 +169,8 @@ for run in range(args.runs):
             for name, param in model.named_parameters():
               if "conv" in name:
                 flattened_gradients = torch.flatten(param.grad)
-                batch_gradients_L1[layer] = batch_gradients_L1[layer] + torch.linalg.norm(flattened_gradients,ord=1)/flattened_gradients.shape[0]
-                batch_gradients_L2[layer] = batch_gradients_L1[layer] + torch.linalg.norm(flattened_gradients,ord=2)/flattened_gradients.shape[0]
+                batch_gradients_L1[layer] = batch_gradients_L1[layer] + torch.norm(flattened_gradients,p=1)/flattened_gradients.shape[0]
+                batch_gradients_L2[layer] = batch_gradients_L1[layer] + torch.norm(flattened_gradients,p=2)/flattened_gradients.shape[0]
                 layer = layer + 1
 
 
@@ -178,7 +179,6 @@ for run in range(args.runs):
 
             losses.append(J.item())
             accuracies.append(y.eq(l.detach().argmax(dim=1)).float().mean())
-            break
 
         train_accuracy[epoch] = torch.tensor(accuracies).mean()
         train_loss[epoch] = torch.tensor(losses).mean()
@@ -213,7 +213,6 @@ for run in range(args.runs):
 
             losses.append(J.item())
             accuracies.append(y.eq(l.detach().argmax(dim=1)).float().mean())
-            break
 
         val_loss[epoch] = torch.tensor(losses).mean()
         val_accuracy[epoch] = torch.tensor(accuracies).mean()
